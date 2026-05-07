@@ -1,4 +1,4 @@
-ffrom flask import Flask, jsonify
+from flask import Flask, jsonify
 import json
 
 app = Flask(__name__)
