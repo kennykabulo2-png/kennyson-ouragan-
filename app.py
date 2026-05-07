@@ -23,13 +23,12 @@ LIVRES = [
     {"titre": "Manuel du citoyen congolais", "auteur": "Société civile", "categorie": "Droits citoyens"},
 ]
 
-# ==================== TEMPLATE BASE (style Cloud Shell + améliorations) ====================
 BASE_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>OYEBI · {title}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -38,13 +37,19 @@ BASE_TEMPLATE = '''
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
         body {{
             font-family: 'Inter', sans-serif;
             background: #0A0F1E;
             color: #F1F5F9;
             overflow-x: hidden;
         }}
+
         #particles-js {{
             position: fixed;
             width: 100%;
@@ -53,6 +58,7 @@ BASE_TEMPLATE = '''
             left: 0;
             z-index: 0;
         }}
+
         .navbar {{
             position: fixed;
             top: 0;
@@ -65,7 +71,10 @@ BASE_TEMPLATE = '''
             align-items: center;
             z-index: 100;
             border-bottom: 1px solid rgba(255,255,255,0.1);
+            flex-wrap: wrap;
+            gap: 1rem;
         }}
+
         .logo {{
             font-size: 1.5rem;
             font-weight: 800;
@@ -74,14 +83,22 @@ BASE_TEMPLATE = '''
             background-clip: text;
             color: transparent;
         }}
+
+        .nav-links {{
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }}
+
         .nav-links a {{
             color: #F1F5F9;
             text-decoration: none;
-            margin-left: 1.5rem;
             font-weight: 500;
+            font-size: 0.9rem;
             transition: 0.3s;
             position: relative;
         }}
+
         .nav-links a::after {{
             content: '';
             position: absolute;
@@ -92,17 +109,23 @@ BASE_TEMPLATE = '''
             background: #FACC15;
             transition: width 0.3s ease;
         }}
+
         .nav-links a:hover::after {{
             width: 100%;
         }}
-        .nav-links a:hover {{ color: #FACC15; }}
+
+        .nav-links a:hover {{
+            color: #FACC15;
+        }}
+
         .container {{
             position: relative;
             z-index: 2;
-            max-width: 1200px;
+            max-width: 1280px;
             margin: 0 auto;
             padding: 6rem 1.5rem 2rem;
         }}
+
         .hero {{
             background: rgba(255,255,255,0.03);
             backdrop-filter: blur(10px);
@@ -111,8 +134,8 @@ BASE_TEMPLATE = '''
             text-align: center;
             margin-bottom: 2rem;
             border: 1px solid rgba(255,255,255,0.1);
-            animation: fadeInUp 0.6s ease-out forwards;
         }}
+
         .hero h1 {{
             font-size: 2.5rem;
             font-weight: 800;
@@ -121,40 +144,115 @@ BASE_TEMPLATE = '''
             background-clip: text;
             color: transparent;
             margin-bottom: 1rem;
-            text-shadow: 0 0 20px rgba(0,133,202,0.3);
         }}
+
         .typed-text {{
             font-size: 1.2rem;
             color: #FACC15;
             margin-bottom: 1rem;
             min-height: 4rem;
         }}
-        .grid-4 {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }}
-        .grid-3 {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }}
+
+        .grid-4 {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }}
+
+        .grid-3 {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }}
+
         .card-glass {{
             background: rgba(255,255,255,0.03);
             backdrop-filter: blur(10px);
             border-radius: 1rem;
             padding: 1.5rem;
             border: 1px solid rgba(255,255,255,0.1);
-            transition: all 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-            animation: fadeInUp 0.6s ease-out forwards;
+            transition: all 0.3s ease;
+            height: 100%;
         }}
+
         .card-glass:hover {{
-            transform: translateY(-8px);
+            transform: translateY(-5px);
             border-color: #FACC15;
             background: rgba(255,255,255,0.07);
-            box-shadow: 0 20px 30px -15px rgba(0,0,0,0.3);
         }}
-        .kpi-value {{ font-size: 2rem; font-weight: 700; color: #FACC15; }}
-        table {{ width: 100%; border-collapse: collapse; }}
-        th, td {{ padding: 0.6rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }}
-        th {{ color: #FACC15; }}
-        .badge-alert {{ background: rgba(239,68,68,0.2); color: #F87171; padding: 0.2rem 0.6rem; border-radius: 2rem; font-size: 0.7rem; }}
-        .badge-conforme {{ background: rgba(34,197,94,0.2); color: #4ADE80; }}
-        .badge-modere {{ background: rgba(250,204,21,0.2); color: #FACC15; }}
-        .progress-bar {{ background: rgba(255,255,255,0.1); border-radius: 1rem; height: 8px; margin: 0.5rem 0; overflow: hidden; }}
-        .progress-fill {{ background: #FACC15; width: 0%; height: 8px; border-radius: 1rem; }}
+
+        .card-glass i {{
+            font-size: 2rem;
+            color: #FACC15;
+            margin-bottom: 1rem;
+            display: inline-block;
+        }}
+
+        .card-glass h2, .card-glass h3 {{
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #FFFFFF;
+        }}
+
+        .kpi-value {{
+            font-size: 2rem;
+            font-weight: 700;
+            color: #FACC15;
+        }}
+
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            overflow-x: auto;
+            display: block;
+        }}
+
+        th, td {{
+            padding: 0.75rem 0.5rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }}
+
+        th {{
+            color: #FACC15;
+        }}
+
+        .badge-alert {{
+            background: rgba(239,68,68,0.2);
+            color: #F87171;
+            padding: 0.2rem 0.6rem;
+            border-radius: 2rem;
+            font-size: 0.7rem;
+        }}
+
+        .badge-conforme {{
+            background: rgba(34,197,94,0.2);
+            color: #4ADE80;
+        }}
+
+        .badge-modere {{
+            background: rgba(250,204,21,0.2);
+            color: #FACC15;
+        }}
+
+        .progress-bar {{
+            background: rgba(255,255,255,0.1);
+            border-radius: 1rem;
+            height: 8px;
+            margin: 0.5rem 0;
+            overflow: hidden;
+        }}
+
+        .progress-fill {{
+            background: #FACC15;
+            width: 0%;
+            height: 8px;
+            border-radius: 1rem;
+        }}
+
         .footer {{
             text-align: center;
             padding: 2rem;
@@ -162,30 +260,65 @@ BASE_TEMPLATE = '''
             font-size: 0.8rem;
             color: #64748B;
         }}
-        @keyframes fadeInUp {{
-            from {{ opacity: 0; transform: translateY(30px); }}
-            to {{ opacity: 1; transform: translateY(0); }}
+
+        canvas {{
+            max-width: 100%;
+            height: auto;
         }}
+
+        /* ==================== RESPONSIVE ==================== */
         @media (max-width: 768px) {{
             .navbar {{
                 flex-direction: column;
-                gap: 1rem;
+                text-align: center;
                 padding: 1rem;
             }}
-            .nav-links a {{
-                margin: 0 0.8rem;
+            .nav-links {{
+                justify-content: center;
+                gap: 1rem;
             }}
-            .hero h1 {{
-                font-size: 1.8rem;
+            .nav-links a {{
+                font-size: 0.85rem;
+            }}
+            .container {{
+                padding: 6rem 1rem 2rem;
             }}
             .hero {{
                 padding: 2rem 1rem;
             }}
+            .hero h1 {{
+                font-size: 1.8rem;
+            }}
+            .typed-text {{
+                font-size: 1rem;
+            }}
             .card-glass {{
                 padding: 1.2rem;
             }}
-            .container {{
-                padding: 6rem 1rem 2rem;
+            .kpi-value {{
+                font-size: 1.5rem;
+            }}
+            table {{
+                font-size: 0.75rem;
+            }}
+            th, td {{
+                padding: 0.5rem 0.25rem;
+            }}
+        }}
+
+        @media (max-width: 480px) {{
+            .hero h1 {{
+                font-size: 1.5rem;
+            }}
+            .grid-4, .grid-3 {{
+                grid-template-columns: 1fr;
+            }}
+            .nav-links {{
+                flex-direction: column;
+                gap: 0.5rem;
+            }}
+            .card-glass {{
+                padding: 1rem;
             }}
         }}
     </style>
@@ -249,16 +382,16 @@ BASE_TEMPLATE = '''
 def render_page(title, content, phrases):
     return BASE_TEMPLATE.format(title=title, content=content, phrases=phrases)
 
-# ==================== PAGE ACCUEIL ====================
+# ==================== CONTENUS DES PAGES ====================
 ACCUEIL = '''
 <div class="hero">
     <h1>OYEBI</h1>
     <div class="typed-text" id="typed"></div>
 </div>
 <div class="grid-3">
-    <div class="card-glass"><i class="fas fa-chart-line" style="font-size:2rem; color:#FACC15;"></i><h3>Données fiables</h3><p>Issues des bases officielles</p></div>
-    <div class="card-glass"><i class="fas fa-eye" style="font-size:2rem; color:#FACC15;"></i><h3>Transparence totale</h3><p>Visualisez les fonds publics</p></div>
-    <div class="card-glass"><i class="fas fa-shield-alt" style="font-size:2rem; color:#FACC15;"></i><h3>Sécurité avancée</h3><p>Accès agent certifié</p></div>
+    <div class="card-glass"><i class="fas fa-chart-line"></i><h3>Données fiables</h3><p>Issues des bases officielles</p></div>
+    <div class="card-glass"><i class="fas fa-eye"></i><h3>Transparence totale</h3><p>Visualisez les fonds publics</p></div>
+    <div class="card-glass"><i class="fas fa-shield-alt"></i><h3>Sécurité avancée</h3><p>Accès agent certifié</p></div>
 </div>
 '''
 
@@ -266,7 +399,6 @@ ACCUEIL = '''
 def index():
     return render_page("Accueil", ACCUEIL, '["La transparence au service de la nation.", "Données publiques pour un Congo qui avance.", "Ensemble, bâtissons une administration exemplaire."]')
 
-# ==================== DASHBOARD ====================
 DASHBOARD = '''
 <div class="hero"><h1>Tableau de bord stratégique</h1><p>Indicateurs clés de la gouvernance</p></div>
 <div class="grid-4" id="kpis"></div>
@@ -285,14 +417,14 @@ DASHBOARD = '''
             <div class="card-glass"><div class="kpi-value">${(stats.masse_salariale/1e6).toFixed(1)}M</div><div>Masse salariale</div></div>
             <div class="card-glass"><div class="kpi-value">${(stats.manque_fiscal/1e6).toFixed(0)}M</div><div>Manque 2025</div></div>
         `;
-        let agentsHtml = '</table>';
-        agents.forEach(a => { agentsHtml += `<tr><td><strong>${a.nom}</strong><br><small>${a.grade}</small></td><td style="text-align:right">${(a.salaire/1e6).toFixed(2)}M FC</td></tr>`; });
+        let agentsHtml = '<tr>';
+        agents.forEach(a => { agentsHtml += `<tr>}<strong>${a.nom}</strong><br><small>${a.grade}</small></td><td style=\"text-align:right\">${(a.salaire/1e6).toFixed(2)}M FC</td></tr>`; });
         agentsHtml += '</table>';
         document.getElementById('agentsTable').innerHTML = agentsHtml;
-        let societesHtml = '<table><thead><tr><th>Société</th><th>Impôt dû</th><th>Payé</th><th>Statut</th> </thead><tbody>';
+        let societesHtml = '<table><thead><tr><th>Société</th><th>Impôt dû</th><th>Payé</th><th>Statut</th></tr></thead><tbody>';
         societes.forEach(s => {
             let badge = s.statut === 'Alerte' ? 'badge-alert' : (s.statut === 'Conforme' ? 'badge-conforme' : 'badge-modere');
-            societesHtml += `<tr><td><strong>${s.nom}</strong></td><td>${s.impot_du}M$</td><td>${s.impot_paye}M$</td><td><span class="${badge}">${s.statut}</span></td>`;
+            societesHtml += `<tr><td><strong>${s.nom}</strong></td><td>${s.impot_du}M$</td><td>${s.impot_paye}M$</td><td><span class="${badge}">${s.statut}</span></td></tr>`;
         });
         societesHtml += '</tbody></table>';
         document.getElementById('societesTable').innerHTML = societesHtml;
@@ -308,7 +440,6 @@ DASHBOARD = '''
 def dashboard():
     return render_page("Dashboard", DASHBOARD, '["Visualisez les indicateurs clés en temps réel.", "Suivez l\'évolution des impôts et des agents.", "Prenez des décisions basées sur des données fiables."]')
 
-# ==================== INSIGHTS ====================
 INSIGHTS = '''
 <div class="hero"><h1>Insights nationaux</h1><p>Analyse des écarts fiscaux par secteur</p></div>
 <div class="grid-3" id="insightsGrid"></div>
@@ -340,7 +471,6 @@ INSIGHTS = '''
 def insights():
     return render_page("Insights", INSIGHTS, '["Analyse des écarts fiscaux par secteur.", "Découvrez les tendances et anomalies.", "Des données pour mieux comprendre l\'économie."]')
 
-# ==================== OBJECTIFS ====================
 OBJECTIFS = '''
 <div class="hero"><h1>Objectifs 2025</h1><p>Suivi des cibles de l'administration</p></div>
 <div class="card-glass"><h3>Impôts collectés</h3><div id="o1"></div><div class="progress-bar"><div id="b1" class="progress-fill"></div></div></div>
@@ -363,7 +493,6 @@ OBJECTIFS = '''
 def objectifs():
     return render_page("Objectifs", OBJECTIFS, '["Mesurez l\'avancement des objectifs 2025.", "Suivez les cibles de l\'administration.", "Atteignons ensemble nos ambitions nationales."]')
 
-# ==================== BIBLIOTHEQUE ====================
 BIBLIOTHEQUE = '''
 <div class="hero"><h1>Bibliothèque citoyenne</h1><p>Lectures pour renforcer la gouvernance</p></div>
 <div class="grid-3" id="booksGrid"></div>
@@ -384,21 +513,19 @@ BIBLIOTHEQUE = '''
 def bibliotheque():
     return render_page("Bibliothèque", BIBLIOTHEQUE, '["Des livres pour comprendre la gouvernance.", "La connaissance au service de la transparence.", "Formez-vous pour mieux agir."]')
 
-# ==================== PAGE À PROPOS ====================
 APROPOS = '''
 <div class="hero"><h1>À propos d'OYEBI</h1></div>
 <div class="card-glass"><h2>📌 Notre Vision</h2><p>OYEBI est né d'une conviction profonde : <strong>la transparence est le fondement d'une gouvernance juste et efficace</strong>. Notre vision est de faire de la République Démocratique du Congo un modèle de gouvernance ouverte, où chaque citoyen peut accéder aux données publiques et comprendre comment son pays est géré.</p></div>
-<div class="card-glass"><h2>🎯 Notre Mission</h2><p>Offrir une plateforme accessible, fiable et moderne qui centralise les données essentielles de l'administration congolaise : situation des agents publics, traçabilité des recettes fiscales, suivi des objectifs nationaux, et ressources documentaires citoyennes.</p></div>
-<div class="card-glass"><h2>💎 Nos Valeurs</h2><div class="grid-3"><div class="card-glass"><i class="fas fa-eye"></i><h3>Transparence</h3><p>Les données sont ouvertes, vérifiables et accessibles à tous.</p></div><div class="card-glass"><i class="fas fa-shield-alt"></i><h3>Intégrité</h3><p>Nous ne modifions ni ne censurons aucune donnée.</p></div><div class="card-glass"><i class="fas fa-chart-line"></i><h3>Innovation</h3><p>Des outils modernes pour une administration plus efficace.</p></div></div></div>
-<div class="card-glass"><h2>🌍 Pourquoi OYEBI ?</h2><p>Le nom <strong>OYEBI</strong> signifie "savoir" ou "connaître" en lingala. Parce qu'un citoyen informé est un citoyen qui peut agir. OYEBI est un outil au service du peuple congolais, pour une démocratie plus participative et une administration plus responsable.</p></div>
-<div class="card-glass" style="text-align: center;"><h2>👨‍💻 Concepteur</h2><p><strong>Kenny Kabulo Matanda</strong><br>Développeur passionné par la Civic Tech et la gouvernance transparente.<br><i class="fas fa-map-marker-alt"></i> Kinshasa, République Démocratique du Congo</p></div>
+<div class="card-glass"><h2>🎯 Notre Mission</h2><p>Offrir une plateforme accessible, fiable et moderne qui centralise les données essentielles de l'administration congolaise.</p></div>
+<div class="card-glass"><h2>💎 Nos Valeurs</h2><div class="grid-3"><div class="card-glass"><i class="fas fa-eye"></i><h3>Transparence</h3></div><div class="card-glass"><i class="fas fa-shield-alt"></i><h3>Intégrité</h3></div><div class="card-glass"><i class="fas fa-chart-line"></i><h3>Innovation</h3></div></div></div>
+<div class="card-glass"><h2>🌍 Pourquoi OYEBI ?</h2><p>Le nom <strong>OYEBI</strong> signifie "savoir" en lingala. Un citoyen informé est un citoyen qui peut agir.</p></div>
+<div class="card-glass" style="text-align: center;"><h2>👨‍💻 Concepteur</h2><p><strong>Kenny Kabulo Matanda</strong><br>Kinshasa, RDC</p></div>
 '''
 
 @app.route('/apropos')
 def apropos():
     return render_page("À propos", APROPOS, '["Une vision pour un Congo transparent.", "La donnée au service du citoyen.", "Innovation et intégrité."]')
 
-# ==================== API ====================
 @app.route('/api/agents')
 def api_agents(): return jsonify(AGENTS)
 @app.route('/api/societes')
