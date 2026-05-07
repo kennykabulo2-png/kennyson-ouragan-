@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template_string
+ffrom flask import Flask, jsonify
 import json
 
 app = Flask(__name__)
@@ -23,8 +23,8 @@ LIVRES = [
     {"titre": "Manuel du citoyen congolais", "auteur": "Société civile", "categorie": "Droits citoyens"},
 ]
 
-# ==================== TEMPLATE HTML ====================
-BASE_HTML = '''
+# ==================== TEMPLATE UNIFORME ====================
+BASE_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -33,35 +33,121 @@ BASE_HTML = '''
     <title>OYEBI · {title}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: 'Inter', sans-serif; background: #F4F6FA; color: #1E2A3A; }}
-        .navbar {{ background: #003366; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }}
-        .logo {{ color: white; font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }}
-        .logo i {{ color: #FACC15; }}
-        .nav-links a {{ color: white; text-decoration: none; margin-left: 1.5rem; font-weight: 500; }}
+        body {{
+            font-family: 'Inter', sans-serif;
+            background: #0A0F1E;
+            color: #F1F5F9;
+            overflow-x: hidden;
+        }}
+        #particles-js {{
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }}
+        .navbar {{
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(10, 15, 30, 0.9);
+            backdrop-filter: blur(15px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }}
+        .logo {{
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #FFFFFF, #0085CA, #FACC15);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }}
+        .nav-links a {{
+            color: #F1F5F9;
+            text-decoration: none;
+            margin-left: 1.5rem;
+            font-weight: 500;
+            transition: 0.3s;
+        }}
         .nav-links a:hover {{ color: #FACC15; }}
-        .container {{ max-width: 1200px; margin: 2rem auto; padding: 0 1.5rem; }}
-        .hero {{ background: white; border-radius: 1rem; padding: 2rem; text-align: center; margin-bottom: 2rem; border: 1px solid #E2E8F0; }}
-        .hero h1 {{ font-size: 2rem; color: #003366; }}
-        .card {{ background: white; border-radius: 1rem; padding: 1.2rem; margin-bottom: 1.5rem; border: 1px solid #E2E8F0; }}
-        .card h3 {{ color: #003366; margin-bottom: 1rem; border-left: 3px solid #FACC15; padding-left: 0.7rem; }}
-        .grid-4 {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }}
-        .kpi-card {{ background: white; border-radius: 1rem; padding: 1rem; text-align: center; border: 1px solid #E2E8F0; }}
-        .kpi-value {{ font-size: 1.8rem; font-weight: 700; color: #003366; }}
-        table {{ width: 100%; border-collapse: collapse; font-size: 0.85rem; }}
-        th, td {{ padding: 0.6rem 0.2rem; text-align: left; border-bottom: 1px solid #E2E8F0; }}
-        .badge-alert {{ background: #FEE2E2; color: #B91C1C; padding: 0.2rem 0.6rem; border-radius: 2rem; font-size: 0.7rem; }}
-        .badge-conforme {{ background: #E0F2FE; color: #0369A1; }}
-        .badge-modere {{ background: #FEF9C3; color: #854D0E; }}
-        .footer {{ text-align: center; padding: 1.5rem; font-size: 0.7rem; color: #64748B; border-top: 1px solid #E2E8F0; margin-top: 2rem; }}
-        @media (max-width: 768px) {{ .nav-links a {{ margin: 0 0.8rem; }} }}
+        .container {{
+            position: relative;
+            z-index: 2;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 6rem 1.5rem 2rem;
+        }}
+        .hero {{
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(10px);
+            border-radius: 2rem;
+            padding: 3rem 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }}
+        .hero h1 {{
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #FFFFFF, #0085CA, #FACC15);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 1rem;
+        }}
+        .typed-text {{
+            font-size: 1.2rem;
+            color: #FACC15;
+            margin-bottom: 1rem;
+            min-height: 4rem;
+        }}
+        .grid-4 {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }}
+        .grid-3 {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }}
+        .card-glass {{
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: 0.3s;
+        }}
+        .card-glass:hover {{ transform: translateY(-5px); border-color: #FACC15; }}
+        .kpi-value {{ font-size: 2rem; font-weight: 700; color: #FACC15; }}
+        table {{ width: 100%; border-collapse: collapse; }}
+        th, td {{ padding: 0.6rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }}
+        th {{ color: #FACC15; }}
+        .badge-alert {{ background: rgba(239,68,68,0.2); color: #F87171; padding: 0.2rem 0.6rem; border-radius: 2rem; font-size: 0.7rem; }}
+        .badge-conforme {{ background: rgba(34,197,94,0.2); color: #4ADE80; }}
+        .badge-modere {{ background: rgba(250,204,21,0.2); color: #FACC15; }}
+        .progress-bar {{ background: rgba(255,255,255,0.1); border-radius: 1rem; height: 8px; margin: 0.5rem 0; overflow: hidden; }}
+        .progress-fill {{ background: #FACC15; width: 0%; height: 8px; border-radius: 1rem; }}
+        .footer {{
+            text-align: center;
+            padding: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.8rem;
+            color: #64748B;
+        }}
+        @media (max-width: 768px) {{
+            .nav-links a {{ margin-left: 0.8rem; }}
+            .hero h1 {{ font-size: 1.8rem; }}
+        }}
     </style>
 </head>
 <body>
-<div class="navbar">
-    <div class="logo"><i class="fas fa-chart-line"></i> OYEBI</div>
+<div id="particles-js"></div>
+<nav class="navbar">
+    <div class="logo">OYEBI</div>
     <div class="nav-links">
         <a href="/">Accueil</a>
         <a href="/dashboard">Dashboard</a>
@@ -69,40 +155,76 @@ BASE_HTML = '''
         <a href="/objectifs">Objectifs</a>
         <a href="/bibliotheque">Bibliothèque</a>
     </div>
-</div>
+</nav>
 <div class="container">
     {content}
 </div>
 <footer class="footer">
-    <p>OYEBI · Kinshasa, RDC</p>
+    <p>OYEBI · Gouvernance transparente · Kinshasa, RDC</p>
 </footer>
+<script>
+    particlesJS("particles-js", {{
+        particles: {{
+            number: {{ value: 80, density: {{ enable: true, value_area: 800 }} }},
+            color: {{ value: "#0085CA" }},
+            shape: {{ type: "circle" }},
+            opacity: {{ value: 0.5, random: true }},
+            size: {{ value: 3, random: true }},
+            line_linked: {{ enable: true, distance: 150, color: "#0085CA", opacity: 0.2, width: 1 }},
+            move: {{ enable: true, speed: 2, direction: "none", random: true, straight: false, out_mode: "out" }}
+        }},
+        interactivity: {{
+            detect_on: "canvas",
+            events: {{ onhover: {{ enable: true, mode: "repulse" }}, onclick: {{ enable: true, mode: "push" }} }}
+        }},
+        retina_detect: true
+    }});
+</script>
 </body>
 </html>
 '''
 
 def render_page(title, content):
-    return BASE_HTML.format(title=title, content=content)
+    return BASE_TEMPLATE.format(title=title, content=content)
 
-# ==================== PAGES ====================
+# ==================== PAGE ACCUEIL ====================
 ACCUEIL = '''
 <div class="hero">
     <h1>OYEBI</h1>
-    <p>La gouvernance transparente pour un Congo qui avance</p>
+    <div class="typed-text" id="typed"></div>
 </div>
-<div class="grid-4">
-    <div class="card"><i class="fas fa-chart-line" style="font-size:2rem; color:#003366;"></i><h3>Données fiables</h3><p>Issues des bases officielles</p></div>
-    <div class="card"><i class="fas fa-eye" style="font-size:2rem; color:#003366;"></i><h3>Transparence totale</h3><p>Visualisez les fonds publics</p></div>
-    <div class="card"><i class="fas fa-shield-alt" style="font-size:2rem; color:#003366;"></i><h3>Sécurité avancée</h3><p>Accès agent certifié</p></div>
-    <div class="card"><i class="fas fa-database" style="font-size:2rem; color:#003366;"></i><h3>Données ouvertes</h3><p>API publiques disponibles</p></div>
+<div class="grid-3">
+    <div class="card-glass"><i class="fas fa-chart-line" style="font-size:2rem; color:#FACC15;"></i><h3>Données fiables</h3><p>Issues des bases officielles</p></div>
+    <div class="card-glass"><i class="fas fa-eye" style="font-size:2rem; color:#FACC15;"></i><h3>Transparence totale</h3><p>Visualisez les fonds publics</p></div>
+    <div class="card-glass"><i class="fas fa-shield-alt" style="font-size:2rem; color:#FACC15;"></i><h3>Sécurité avancée</h3><p>Accès agent certifié</p></div>
 </div>
+<script>
+    const phrases = ["La transparence au service de la nation.", "Données publiques pour un Congo qui avance.", "Ensemble, bâtissons une administration exemplaire."];
+    let i = 0, j = 0, isDeleting = false;
+    function type() {
+        const current = phrases[i];
+        const typed = document.getElementById("typed");
+        if (isDeleting) typed.innerText = current.substring(0, j--);
+        else typed.innerText = current.substring(0, j++);
+        if (!isDeleting && j === current.length) isDeleting = true;
+        if (isDeleting && j === 0) { isDeleting = false; i = (i + 1) % phrases.length; }
+        setTimeout(type, 100);
+    }
+    type();
+</script>
 '''
 
+@app.route('/')
+def index():
+    return render_page("Accueil", ACCUEIL)
+
+# ==================== DASHBOARD ====================
 DASHBOARD = '''
 <div class="hero"><h1>Tableau de bord stratégique</h1><p>Indicateurs clés de la gouvernance</p></div>
 <div class="grid-4" id="kpis"></div>
-<div class="card"><h3>📈 Comparaison impôts (M$)</h3><canvas id="chart"></canvas></div>
-<div class="card"><h3>👥 Agents de l'État</h3><div id="agentsTable"></div></div>
-<div class="card"><h3>🏢 Sociétés</h3><div id="societesTable"></div></div>
+<div class="card-glass"><h3>📈 Comparaison impôts (M$)</h3><canvas id="chart"></canvas></div>
+<div class="card-glass"><h3>👥 Agents de l'État</h3><div id="agentsTable"></div></div>
+<div class="card-glass"><h3>🏢 Sociétés</h3><div id="societesTable"></div></div>
 <script>
     async function fetchData(url) { let r = await fetch(url); return r.json(); }
     async function load() {
@@ -110,14 +232,14 @@ DASHBOARD = '''
         let societes = await fetchData('/api/societes');
         let stats = await fetchData('/api/stats');
         document.getElementById('kpis').innerHTML = `
-            <div class="kpi-card"><div class="kpi-value">${stats.nb_agents}</div><div>Agents</div></div>
-            <div class="kpi-card"><div class="kpi-value">${stats.nb_societes}</div><div>Sociétés</div></div>
-            <div class="kpi-card"><div class="kpi-value">${(stats.masse_salariale/1e6).toFixed(1)}M</div><div>Masse salariale</div></div>
-            <div class="kpi-card"><div class="kpi-value">${(stats.manque_fiscal/1e6).toFixed(0)}M</div><div>Manque à gagner</div></div>
+            <div class="card-glass"><div class="kpi-value">${stats.nb_agents}</div><div>Agents</div></div>
+            <div class="card-glass"><div class="kpi-value">${stats.nb_societes}</div><div>Sociétés</div></div>
+            <div class="card-glass"><div class="kpi-value">${(stats.masse_salariale/1e6).toFixed(1)}M</div><div>Masse salariale</div></div>
+            <div class="card-glass"><div class="kpi-value">${(stats.manque_fiscal/1e6).toFixed(0)}M</div><div>Manque 2025</div></div>
         `;
-        let agentsHtml = '<table>';
-        agents.forEach(a => { agentsHtml += `<tr><td><strong>${a.nom}</strong><br><small>${a.grade}</small></td><td>${(a.salaire/1e6).toFixed(2)}M FC</td></td>`; });
-        agentsHtml += '</table>';
+        let agentsHtml = '</tr>';
+        agents.forEach(a => { agentsHtml += `<tr><td><strong>${a.nom}</strong><br><small>${a.grade}</small></td><td style="text-align:right">${(a.salaire/1e6).toFixed(2)}M FC</td></tr>`; });
+        agentsHtml += '</tr>';
         document.getElementById('agentsTable').innerHTML = agentsHtml;
         let societesHtml = '<table><thead><tr><th>Société</th><th>Impôt dû</th><th>Payé</th><th>Statut</th> </thead><tbody>';
         societes.forEach(s => {
@@ -127,21 +249,24 @@ DASHBOARD = '''
         societesHtml += '</tbody></table>';
         document.getElementById('societesTable').innerHTML = societesHtml;
         new Chart(document.getElementById('chart'), {
-            type: 'bar', data: { labels: societes.map(s => s.nom), datasets: [{ label: 'Dû', data: societes.map(s => s.impot_du), backgroundColor: '#003366' }, { label: 'Payé', data: societes.map(s => s.impot_paye), backgroundColor: '#FACC15' }] }
+            type: 'bar', data: { labels: societes.map(s => s.nom), datasets: [{ label: 'Dû', data: societes.map(s => s.impot_du), backgroundColor: '#0085CA' }, { label: 'Payé', data: societes.map(s => s.impot_paye), backgroundColor: '#FACC15' }] }
         });
     }
     load();
 </script>
 '''
 
+@app.route('/dashboard')
+def dashboard():
+    return render_page("Dashboard", DASHBOARD)
+
+# ==================== INSIGHTS ====================
 INSIGHTS = '''
 <div class="hero"><h1>Insights nationaux</h1><p>Analyse des écarts fiscaux par secteur</p></div>
-<div class="card"><h3>Mines</h3><div id="m"></div></div>
-<div class="card"><h3>Télécoms</h3><div id="t"></div></div>
-<div class="card"><h3>BTP</h3><div id="b"></div></div>
-<div class="card"><h3>Répartition du manque fiscal</h3><canvas id="donut"></canvas></div>
+<div class="grid-3" id="insightsGrid"></div>
+<div class="card-glass"><h3>Répartition du manque fiscal</h3><canvas id="donut"></canvas></div>
 <script>
-    async function run() {
+    async function loadInsights() {
         let societes = await (await fetch('/api/societes')).json();
         let total = societes.reduce((s,c)=>s+(c.impot_du-c.impot_paye),0);
         let mines = societes.find(s=>s.nom==='Minière du Congo');
@@ -150,22 +275,29 @@ INSIGHTS = '''
         let m = mines.impot_du - mines.impot_paye;
         let t = telecom.impot_du - telecom.impot_paye;
         let b = btp.impot_du - btp.impot_paye;
-        document.getElementById('m').innerHTML = `Manque fiscal : ${m}M$ (${Math.round(m/total*100)}% du total)`;
-        document.getElementById('t').innerHTML = `Manque fiscal : ${t}M$ (${Math.round(t/total*100)}%)`;
-        document.getElementById('b').innerHTML = `Manque fiscal : ${b}M$ (${Math.round(b/total*100)}%)`;
+        document.getElementById('insightsGrid').innerHTML = `
+            <div class="card-glass"><h3>Mines</h3><div class="kpi-value">${m}M$</div><div>${Math.round(m/total*100)}% du total</div></div>
+            <div class="card-glass"><h3>Télécoms</h3><div class="kpi-value">${t}M$</div><div>${Math.round(t/total*100)}%</div></div>
+            <div class="card-glass"><h3>BTP</h3><div class="kpi-value">${b}M$</div><div>${Math.round(b/total*100)}%</div></div>
+        `;
         new Chart(document.getElementById('donut'), {
             type: 'doughnut',
-            data: { labels: ['Mines','Télécoms','BTP','Commerce'], datasets: [{ data: societes.map(s=>s.impot_du-s.impot_paye), backgroundColor: ['#003366','#FACC15','#EF4444','#10B981'] }] }
+            data: { labels: ['Mines','Télécoms','BTP','Commerce'], datasets: [{ data: societes.map(s=>s.impot_du-s.impot_paye), backgroundColor: ['#0085CA','#FACC15','#EF4444','#10B981'] }] }
         });
     }
-    run();
+    loadInsights();
 </script>
 '''
 
+@app.route('/insights')
+def insights():
+    return render_page("Insights", INSIGHTS)
+
+# ==================== OBJECTIFS ====================
 OBJECTIFS = '''
 <div class="hero"><h1>Objectifs 2025</h1><p>Suivi des cibles de l'administration</p></div>
-<div class="card"><h3>Impôts collectés</h3><div id="o1"></div><div class="progress-bar"><div id="b1" class="progress-fill"></div></div></div>
-<div class="card"><h3>Agents formés</h3><div id="o2"></div><div class="progress-bar"><div id="b2" class="progress-fill"></div></div></div>
+<div class="card-glass"><h3>Impôts collectés</h3><div id="o1"></div><div class="progress-bar"><div id="b1" class="progress-fill"></div></div></div>
+<div class="card-glass"><h3>Agents formés</h3><div id="o2"></div><div class="progress-bar"><div id="b2" class="progress-fill"></div></div></div>
 <script>
     async function load() {
         let stats = await (await fetch('/api/stats')).json();
@@ -180,38 +312,26 @@ OBJECTIFS = '''
 </script>
 '''
 
+@app.route('/objectifs')
+def objectifs():
+    return render_page("Objectifs", OBJECTIFS)
+
+# ==================== BIBLIOTHEQUE ====================
 BIBLIOTHEQUE = '''
 <div class="hero"><h1>Bibliothèque citoyenne</h1><p>Lectures pour renforcer la gouvernance</p></div>
-<div class="grid-4" id="booksGrid"></div>
+<div class="grid-3" id="booksGrid"></div>
 <script>
     async function loadBooks() {
         let livres = await (await fetch('/api/livres')).json();
         let html = '';
         for (let l of livres) {
-            html += `<div class="kpi-card"><i class="fas fa-book" style="font-size:1.5rem; color:#003366;"></i><h3>${l.titre}</h3><p>${l.auteur}</p><small>${l.categorie}</small></div>`;
+            html += `<div class="card-glass"><i class="fas fa-book" style="font-size:1.5rem; color:#FACC15;"></i><h3>${l.titre}</h3><p>${l.auteur}</p><small>${l.categorie}</small></div>`;
         }
         document.getElementById('booksGrid').innerHTML = html;
     }
     loadBooks();
 </script>
 '''
-
-# ==================== ROUTES ====================
-@app.route('/')
-def index():
-    return render_page("Accueil", ACCUEIL)
-
-@app.route('/dashboard')
-def dashboard():
-    return render_page("Dashboard", DASHBOARD)
-
-@app.route('/insights')
-def insights():
-    return render_page("Insights", INSIGHTS)
-
-@app.route('/objectifs')
-def objectifs():
-    return render_page("Objectifs", OBJECTIFS)
 
 @app.route('/bibliotheque')
 def bibliotheque():
