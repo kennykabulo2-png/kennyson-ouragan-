@@ -490,7 +490,7 @@ BASE_TEMPLATE = '''
     }}
     type();
     
-    // Vérification de connexion pour le menu
+    // Gestion du lien Connexion / Mon compte
     const token = localStorage.getItem('token');
     const authLink = document.getElementById('authLink');
     if (token && authLink) {
@@ -509,7 +509,10 @@ BASE_TEMPLATE = '''
             authLink.innerHTML = 'Connexion';
             authLink.href = '/login';
         }});
-    }
+    } else if (authLink) {{
+        authLink.innerHTML = 'Connexion';
+        authLink.href = '/login';
+    }}
 </script>
 </body>
 </html>
@@ -624,7 +627,7 @@ DASHBOARD = '''
                 <td><span class="${badge}">${s.statut}</span></td>
             </tr>`;
         });
-        societesHtml += '</tbody></table>';
+        societesHtml += '</tbody></tr>';
         document.getElementById('societesTable').innerHTML = societesHtml;
         
         if (!document.getElementById('exportAgentsBtn')) {
@@ -748,4 +751,210 @@ BIBLIOTHEQUE = '''
                     <h3>${l.titre}</h3>
                     <p>${l.auteur}</p>
                     <small style="color:#94A3B8;">${l.categorie}</small>
-                    <p style="margin-top:0.8rem; font-size:
+                    <p style="margin-top:0.8rem; font-size:0.85rem;">${l.resume.substring(0, 120)}...</p>
+                    <div style="margin-top:1rem;">
+                        <button style="background:#0085CA; color:white; border:none; border-radius:0.5rem; padding:0.3rem 0.8rem; cursor:pointer;">Lire l'extrait</button>
+                    </div>
+                </div>
+            `;
+        }
+        document.getElementById('booksGrid').innerHTML = html;
+    }
+
+    function openBookModal(index) {
+        const livre = livresData[index];
+        document.getElementById('modalTitle').innerText = livre.titre;
+        document.getElementById('modalAuthor').innerHTML = `<i class="fas fa-user"></i> ${livre.auteur} | <i class="fas fa-tag"></i> ${livre.categorie}`;
+        document.getElementById('modalResume').innerText = livre.resume;
+        document.getElementById('modalContent').innerText = livre.contenu;
+        document.getElementById('bookModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('bookModal').style.display = 'none';
+    }
+
+    loadBooks();
+</script>
+'''
+
+@app.route('/bibliotheque')
+def bibliotheque():
+    return render_page("Bibliothèque", BIBLIOTHEQUE, '["Des livres pour comprendre la gouvernance.", "La connaissance au service de la transparence.", "Formez-vous pour mieux agir."]')
+
+# ==================== À PROPOS ====================
+APROPOS = '''
+<div class="hero"><h1><i class="fas fa-info-circle"></i> À propos d'OYEBI</h1></div>
+<div class="card-glass"><h2><i class="fas fa-bullseye"></i> Notre Vision</h2><p>OYEBI est né d'une conviction profonde : la transparence est le fondement d'une gouvernance juste et efficace.</p></div>
+<div class="card-glass"><h2><i class="fas fa-flag-checkered"></i> Notre Mission</h2><p>Offrir une plateforme accessible, fiable et moderne qui centralise les données essentielles de l'administration congolaise.</p></div>
+<div class="card-glass"><h2><i class="fas fa-gem"></i> Nos Valeurs</h2><div class="grid-3"><div class="card-glass"><i class="fas fa-eye"></i><h3>Transparence</h3></div><div class="card-glass"><i class="fas fa-shield-alt"></i><h3>Intégrité</h3></div><div class="card-glass"><i class="fas fa-chart-line"></i><h3>Innovation</h3></div></div></div>
+<div class="card-glass"><h2><i class="fas fa-globe-africa"></i> Pourquoi OYEBI ?</h2><p>Le nom OYEBI signifie "savoir" en lingala. Un citoyen informé est un citoyen qui peut agir.</p></div>
+<div class="card-glass" style="text-align: center;"><h2><i class="fas fa-laptop-code"></i> Concepteur</h2><p><strong>Kenny Kabulo Matanda</strong><br>Kinshasa, RDC</p></div>
+'''
+
+@app.route('/apropos')
+def apropos():
+    return render_page("À propos", APROPOS, '["Une vision pour un Congo transparent.", "La donnée au service du citoyen.", "Innovation et intégrité."]')
+
+# ==================== PAGE CONNEXION ====================
+LOGIN_PAGE = '''
+<div style="max-width: 500px; margin: 0 auto;">
+    <div class="card-glass">
+        <h2 style="text-align:center; margin-bottom:1rem;" id="formTitle">Créer un compte</h2>
+        
+        <div id="loginForm" style="display: none;">
+            <div class="input-group"><input type="email" id="loginEmail" placeholder="Email" style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:0.5rem; color:white; margin-bottom:1rem;"></div>
+            <div class="input-group"><input type="password" id="loginPassword" placeholder="Mot de passe" style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:0.5rem; color:white; margin-bottom:1rem;"></div>
+            <div style="display:flex; align-items:center; gap:0.5rem; margin:0.5rem 0 1rem 0;">
+                <input type="checkbox" id="showLoginPassword"><label style="color:#94A3B8;">Afficher le mot de passe</label>
+            </div>
+            <button onclick="login()" style="width:100%; padding:0.8rem; background:#FACC15; color:#0A0F1E; border:none; border-radius:0.5rem; font-weight:bold; cursor:pointer;">Se connecter</button>
+            <div style="text-align:center; margin-top:1rem; color:#94A3B8;">
+                Pas encore de compte ? <span onclick="showRegister()" style="color:#FACC15; cursor:pointer;">S'inscrire</span>
+            </div>
+        </div>
+
+        <div id="registerForm">
+            <div class="input-group"><input type="text" id="regName" placeholder="Nom complet" style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:0.5rem; color:white; margin-bottom:1rem;"></div>
+            <div class="input-group"><input type="email" id="regEmail" placeholder="Email" style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:0.5rem; color:white; margin-bottom:1rem;"></div>
+            <div class="input-group"><input type="password" id="regPassword" placeholder="Mot de passe" style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:0.5rem; color:white; margin-bottom:1rem;"></div>
+            <div style="display:flex; align-items:center; gap:0.5rem; margin:0.5rem 0 1rem 0;">
+                <input type="checkbox" id="showRegPassword"><label style="color:#94A3B8;">Afficher le mot de passe</label>
+            </div>
+            <button onclick="register()" style="width:100%; padding:0.8rem; background:#FACC15; color:#0A0F1E; border:none; border-radius:0.5rem; font-weight:bold; cursor:pointer;">Créer mon compte</button>
+            <div style="text-align:center; margin-top:1rem; color:#94A3B8;">
+                Déjà un compte ? <span onclick="showLogin()" style="color:#FACC15; cursor:pointer;">Se connecter</span>
+            </div>
+        </div>
+
+        <div id="message" style="color:#EF4444; font-size:0.8rem; margin-top:1rem; text-align:center;"></div>
+    </div>
+</div>
+
+<style>
+    .input-group input:focus {
+        outline: none;
+        border-color: #FACC15;
+    }
+</style>
+
+<script>
+    document.getElementById('showLoginPassword')?.addEventListener('change', function() {
+        document.getElementById('loginPassword').type = this.checked ? 'text' : 'password';
+    });
+    document.getElementById('showRegPassword')?.addEventListener('change', function() {
+        document.getElementById('regPassword').type = this.checked ? 'text' : 'password';
+    });
+
+    function showLogin() {
+        document.getElementById('registerForm').style.display = 'none';
+        document.getElementById('loginForm').style.display = 'block';
+        document.getElementById('formTitle').innerText = 'Connexion';
+        document.getElementById('message').innerHTML = '';
+    }
+    function showRegister() {
+        document.getElementById('registerForm').style.display = 'block';
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('formTitle').innerText = 'Créer un compte';
+        document.getElementById('message').innerHTML = '';
+    }
+    async function register() {
+        const res = await fetch('/api/register', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                name: document.getElementById('regName').value,
+                email: document.getElementById('regEmail').value,
+                password: document.getElementById('regPassword').value
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            document.getElementById('message').innerHTML = '<div style="color:#4ADE80;">✅ ' + data.message + '</div>';
+            setTimeout(() => showLogin(), 2000);
+        } else {
+            document.getElementById('message').innerHTML = '<div style="color:#EF4444;">❌ ' + data.error + '</div>';
+        }
+    }
+    async function login() {
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                email: document.getElementById('loginEmail').value,
+                password: document.getElementById('loginPassword').value
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            localStorage.setItem('token', data.token);
+            window.location.href = '/mon-compte';
+        } else {
+            document.getElementById('message').innerHTML = '<div style="color:#EF4444;">❌ ' + data.error + '</div>';
+        }
+    }
+    if (localStorage.getItem('token')) {
+        window.location.href = '/mon-compte';
+    }
+</script>
+'''
+
+@app.route('/login')
+def login_page():
+    return render_page("Connexion", LOGIN_PAGE, '["Connectez-vous à votre espace", "Accédez aux données sécurisées", "Identifiez-vous pour continuer"]')
+
+# ==================== PAGE MON COMPTE ====================
+MON_COMPTE = '''
+<div class="hero"><h1><i class="fas fa-user-circle"></i> Mon compte</h1><p>Bienvenue sur votre espace personnel</p></div>
+<div class="card-glass" style="text-align:center;">
+    <div id="userInfo"></div>
+    <button onclick="logout()" style="margin-top:1rem; background:#EF4444; color:white; border:none; border-radius:0.5rem; padding:0.5rem 1rem; cursor:pointer;">
+        <i class="fas fa-sign-out-alt"></i> Se déconnecter
+    </button>
+</div>
+<script>
+    async function loadUser() {
+        const res = await fetch('/api/me');
+        if (res.ok) {
+            const user = await res.json();
+            document.getElementById('userInfo').innerHTML = `
+                <i class="fas fa-user" style="font-size:3rem; color:#FACC15;"></i>
+                <h2>${user.name}</h2>
+                <p><i class="fas fa-envelope"></i> ${user.email}</p>
+                <p><i class="fas fa-calendar"></i> Membre depuis 2025</p>
+            `;
+        } else {
+            window.location.href = '/login';
+        }
+    }
+    async function logout() {
+        await fetch('/api/logout', { method: 'POST' });
+        localStorage.removeItem('token');
+        window.location.href = '/';
+    }
+    loadUser();
+</script>
+'''
+
+@app.route('/mon-compte')
+def mon_compte():
+    return render_page("Mon compte", MON_COMPTE, '["Bienvenue dans votre espace", "Gérez vos informations", "Accédez aux fonctionnalités réservées"]')
+
+# ==================== API ====================
+@app.route('/api/agents')
+def api_agents(): return jsonify(AGENTS)
+@app.route('/api/societes')
+def api_societes(): return jsonify(SOCIETES)
+@app.route('/api/livres')
+def api_livres(): return jsonify(LIVRES)
+@app.route('/api/stats')
+def api_stats():
+    return jsonify({
+        "nb_agents": len(AGENTS),
+        "nb_societes": len(SOCIETES),
+        "masse_salariale": sum(a['salaire'] for a in AGENTS),
+        "manque_fiscal": sum(s['impot_du'] - s['impot_paye'] for s in SOCIETES) * 1_000_000
+    })
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
