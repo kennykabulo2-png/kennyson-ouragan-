@@ -1,11 +1,6 @@
 from flask import Flask, jsonify, request
 import requests
 import os
-import feedparser
-import praw
-import wikipedia
-import json
-from datetime import datetime
 
 app = Flask(__name__)
 
@@ -14,98 +9,46 @@ app = Flask(__name__)
 # ==================================================
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 GNEWS_API_KEY = os.environ.get('GNEWS_API_KEY', '')
-REDDIT_CLIENT_ID = os.environ.get('REDDIT_CLIENT_ID', '')
-REDDIT_CLIENT_SECRET = os.environ.get('REDDIT_CLIENT_SECRET', '')
-
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # ==================================================
-# 1. SOURCES FONDATIONNELLES (Wikipedia + Wikidata)
+# 1. WIKIPEDIA API (source #1 de ChatGPT)
 # ==================================================
-def get_wikipedia_summary(topic):
-    """Récupère un résumé Wikipedia (source #1 de ChatGPT)"""
+def get_wikipedia(topic):
+    """Récupère un résumé Wikipedia"""
     try:
-        wikipedia.set_lang("fr")
-        summary = wikipedia.summary(topic, sentences=5)
-        return f"📖 **Wikipedia - {topic.capitalize()}** :\n{summary}\n"
-    except:
-        try:
-            wikipedia.set_lang("en")
-            summary = wikipedia.summary(topic, sentences=5)
-            return f"📖 **Wikipedia - {topic.capitalize()}** :\n{summary}\n"
-        except:
-            return None
-
-def get_wikidata_info(entity_id):
-    """Récupère des données structurées depuis Wikidata"""
-    try:
-        url = f"https://www.wikidata.org/wiki/Special:EntityData/{entity_id}.json"
-        r = requests.get(url, timeout=8)
+        # Essayer d'abord en français
+        url_fr = f"https://fr.wikipedia.org/api/rest_v1/page/summary/{topic}"
+        r = requests.get(url_fr, timeout=8)
         if r.status_code == 200:
             data = r.json()
-            entities = data.get('entities', {})
-            if entity_id in entities:
-                labels = entities[entity_id].get('labels', {})
-                fr_label = labels.get('fr', {}).get('value', '')
-                return fr_label
+            if 'extract' in data:
+                return f"📖 **Wikipedia ({topic})** :\n{data['extract'][:600]}..."
+        
+        # Sinon en anglais
+        url_en = f"https://en.wikipedia.org/api/rest_v1/page/summary/{topic}"
+        r = requests.get(url_en, timeout=8)
+        if r.status_code == 200:
+            data = r.json()
+            if 'extract' in data:
+                return f"📖 **Wikipedia ({topic})** :\n{data['extract'][:600]}..."
     except:
         pass
     return None
 
 # ==================================================
-# 2. SOURCES DYNAMIQUES (RSS Feeds + Reddit)
+# 2. BANQUE MONDIALE (données économiques)
 # ==================================================
-RSS_FEEDS = [
-    "https://www.lemonde.fr/rss/une.xml",
-    "https://www.lefigaro.fr/rss/figaro_actualites.xml",
-    "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
-    "https://feeds.bbci.co.uk/news/world/rss.xml",
-    "https://www.lepoint.fr/feed.xml"
-]
+COUNTRIES = {
+    "rdc": "CD", "congo": "CD",
+    "usa": "US", "etats-unis": "US",
+    "france": "FR", "chine": "CN", "allemagne": "DE",
+    "japon": "JP", "royaume-uni": "GB", "angleterre": "GB",
+    "canada": "CA", "bresil": "BR", "inde": "IN",
+    "nigeria": "NG", "afrique du sud": "ZA", "maroc": "MA"
+}
 
-def get_rss_news():
-    """Récupère les dernières nouvelles des grands médias"""
-    results = []
-    for feed_url in RSS_FEEDS[:3]:
-        try:
-            feed = feedparser.parse(feed_url)
-            for entry in feed.entries[:3]:
-                results.append({
-                    "title": entry.title,
-                    "summary": entry.summary[:200] if 'summary' in entry else '',
-                    "source": feed.feed.title if 'title' in feed.feed else feed_url,
-                    "link": entry.link
-                })
-        except:
-            pass
-    return results
-
-def get_reddit_posts(query, limit=5):
-    """Récupère des posts Reddit (source #2 de ChatGPT)"""
-    if not REDDIT_CLIENT_ID:
-        return None
-    try:
-        reddit = praw.Reddit(
-            client_id=REDDIT_CLIENT_ID,
-            client_secret=REDDIT_CLIENT_SECRET,
-            user_agent="KENNYSON-IA/1.0"
-        )
-        posts = []
-        for post in reddit.subreddit("all").search(query, limit=limit):
-            posts.append({
-                "title": post.title,
-                "score": post.score,
-                "subreddit": post.subreddit.display_name,
-                "url": post.url
-            })
-        return posts
-    except:
-        return None
-
-# ==================================================
-# 3. SOURCES TEMPS RÉEL (Actualités, Météo, Crypto, Économie)
-# ==================================================
-def get_worldbank_gdp(country_code="CD"):
+def get_worldbank_gdp(country_code):
     try:
         url = f"http://api.worldbank.org/v2/country/{country_code}/indicator/NY.GDP.MKTP.CD?format=json"
         r = requests.get(url, timeout=8)
@@ -117,7 +60,7 @@ def get_worldbank_gdp(country_code="CD"):
         pass
     return None
 
-def get_worldbank_inflation(country_code="CD"):
+def get_worldbank_inflation(country_code):
     try:
         url = f"http://api.worldbank.org/v2/country/{country_code}/indicator/FP.CPI.TOTL.ZG?format=json"
         r = requests.get(url, timeout=8)
@@ -129,7 +72,10 @@ def get_worldbank_inflation(country_code="CD"):
         pass
     return None
 
-def get_crypto_price(coin="bitcoin"):
+# ==================================================
+# 3. CRYPTO (CoinGecko)
+# ==================================================
+def get_crypto(coin="bitcoin"):
     try:
         r = requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={coin}&vs_currencies=usd,eur", timeout=8)
         if r.status_code == 200:
@@ -140,8 +86,12 @@ def get_crypto_price(coin="bitcoin"):
         pass
     return None
 
-def get_weather(city):
+# ==================================================
+# 4. MÉTÉO (Open-Meteo)
+# ==================================================
+def get_weather_city(city):
     try:
+        # Géocodage
         geo = requests.get(f"https://nominatim.openstreetmap.org/search?q={city}&format=json&limit=1", 
                           headers={'User-Agent': 'KENNYSON-IA/1.0'}, timeout=8)
         if geo.status_code == 200 and geo.json():
@@ -154,183 +104,143 @@ def get_weather(city):
         pass
     return None
 
-def get_news_gnews(query):
+# ==================================================
+# 5. ACTUALITÉS (GNews)
+# ==================================================
+def get_news(query):
     if not GNEWS_API_KEY:
         return None
     try:
-        r = requests.get(f"https://gnews.io/api/v4/search?q={query}&token={GNEWS_API_KEY}&lang=fr&max=5", timeout=8)
+        r = requests.get(f"https://gnews.io/api/v4/search?q={query}&token={GNEWS_API_KEY}&lang=fr&max=4", timeout=8)
         if r.status_code == 200:
             articles = r.json().get('articles', [])
-            return articles[:5]
+            return articles[:4]
     except:
         pass
     return None
 
 # ==================================================
-# 4. MÉMOIRE VECTORIELLE (Qdrant simplifié)
+# 6. TAUX DE CHANGE
 # ==================================================
-class SimpleVectorMemory:
-    def __init__(self):
-        self.documents = []
-    
-    def add(self, content, source):
-        self.documents.append({"content": content[:500], "source": source, "timestamp": datetime.now().isoformat()})
-    
-    def search(self, query, limit=3):
-        query_words = set(query.lower().split())
-        scored = []
-        for doc in self.documents:
-            words = set(doc["content"].lower().split())
-            score = len(query_words & words)
-            scored.append((score, doc))
-        scored.sort(reverse=True)
-        return scored[:limit]
-
-memory = SimpleVectorMemory()
+def get_exchange_rate():
+    try:
+        r = requests.get("https://api.exchangerate-api.com/v4/latest/USD", timeout=8)
+        if r.status_code == 200:
+            data = r.json()
+            return {"eur": data['rates'].get('EUR'), "gbp": data['rates'].get('GBP')}
+    except:
+        pass
+    return None
 
 # ==================================================
-# 5. IA CENTRALE AVEC TOUTES LES SOURCES
+# IA CENTRALE
 # ==================================================
-COUNTRIES = {
-    "rdc": "CD", "usa": "US", "france": "FR", "chine": "CN", "allemagne": "DE",
-    "japon": "JP", "royaume-uni": "GB", "canada": "CA", "bresil": "BR", "inde": "IN"
-}
+SYSTEM_PROMPT = """Tu es KENNYSON OURAGAN, un assistant intelligent.
 
-SYSTEM_PROMPT = """Tu es KENNYSON OURAGAN, un assistant intelligent de niveau ChatGPT.
-
-TES SOURCES D'INFORMATION :
-1. Wikipedia (savoir général structuré)
-2. RSS des grands médias (Le Monde, Figaro, NYT, BBC)
-3. Reddit (discussions et opinions)
-4. Banque mondiale (données économiques)
-5. GNews (actualités en temps réel)
-6. Open-Meteo (météo mondiale)
-7. CoinGecko (cryptomonnaies)
+SOURCES DISPONIBLES :
+- Wikipedia (savoir général)
+- Banque mondiale (PIB, inflation)
+- CoinGecko (Bitcoin, crypto)
+- Open-Meteo (météo)
+- GNews (actualités)
+- Exchange Rate API (taux de change)
 
 RÈGLES :
-- Réponds en français de manière professionnelle
-- Cite TES SOURCES à la fin de ta réponse
-- Structure ta réponse en paragraphes
+- Réponds en français, de manière professionnelle
+- Cite TES SOURCES à la fin de chaque réponse
 - Sois précis, donne des chiffres
-- N'invente jamais d'informations
-
-Tu es une IA internationale. Tu connais TOUS les pays.
+- Ne jamais inventer d'informations
 """
 
-def get_all_sources(question):
-    """Rassemble les informations de toutes les sources"""
+def get_all_data(question):
     q = question.lower()
     context = ""
     
-    # 1. Wikipedia
-    if len(q.split()) > 2:
-        topic = q.split()[-1]
-        wiki = get_wikipedia_summary(topic)
-        if wiki:
-            context += f"\n📖 **SOURCE WIKIPEDIA** :\n{wiki}\n"
-            memory.add(wiki, "wikipedia")
+    # 1. Wikipedia (biographie, définition)
+    topics = ["elon musk", "albert einstein", "marie curie", "napoleon", "poutine", "macron", "ia", "intelligence artificielle"]
+    for topic in topics:
+        if topic in q:
+            wiki = get_wikipedia(topic.replace(" ", "_"))
+            if wiki:
+                context += f"\n{wiki}\n"
+                break
     
-    # 2. RSS Feeds (actualités médias)
-    rss_news = get_rss_news()
-    if rss_news:
-        context += "\n📰 **ACTUALITÉS DES MÉDIAS** :\n"
-        for article in rss_news[:3]:
-            context += f"• {article['title']}\n  📍 {article['source']}\n\n"
-            memory.add(article['title'], article['source'])
-    
-    # 3. Reddit
-    if REDDIT_CLIENT_ID:
-        reddit_posts = get_reddit_posts(q, 3)
-        if reddit_posts:
-            context += "\n💬 **DISCUSSIONS REDDIT** :\n"
-            for post in reddit_posts:
-                context += f"• r/{post['subreddit']}: {post['title']} (👍 {post['score']})\n"
-                memory.add(post['title'], f"reddit.com/r/{post['subreddit']}")
-    
-    # 4. Données économiques (Banque mondiale)
+    # 2. Banque mondiale (économie)
     for country_name, code in COUNTRIES.items():
         if country_name in q:
             gdp = get_worldbank_gdp(code)
             inflation = get_worldbank_inflation(code)
             if gdp:
-                context += f"\n📊 **BANQUE MONDIALE - {country_name.upper()}** :\n"
+                context += f"\n📊 **BANQUE MONDIALE - {country_name.upper()}**\n"
                 context += f"   PIB: {gdp:,} USD\n"
                 if inflation:
                     context += f"   Inflation: {inflation:.1f}%\n"
             break
     
-    # 5. Crypto
+    # 3. Crypto
     if "bitcoin" in q or "btc" in q:
-        btc = get_crypto_price("bitcoin")
+        btc = get_crypto("bitcoin")
         if btc:
-            context += f"\n💰 **COINGECKO** : Bitcoin: ${btc['usd']:,} USD\n"
+            context += f"\n💰 **COINGECKO**\n   Bitcoin: ${btc['usd']:,} USD / €{btc['eur']:,} EUR\n"
+    if "ethereum" in q or "eth" in q:
+        eth = get_crypto("ethereum")
+        if eth:
+            context += f"   Ethereum: ${eth['usd']:,} USD / €{eth['eur']:,} EUR\n"
     
-    # 6. Météo
+    # 4. Météo
     for word in q.split():
-        if word[0].isupper() and len(word) > 3:
-            temp = get_weather(word)
+        if len(word) > 3 and word[0].isupper():
+            temp = get_weather_city(word)
             if temp:
-                context += f"\n🌤️ **OPEN-METEO** - {word}: {temp}°C\n"
+                context += f"\n🌤️ **OPEN-METEO - {word}**\n   Température: {temp}°C\n"
                 break
     
-    # 7. Actualités GNews
-    news = get_news_gnews(q)
-    if news:
-        context += "\n🌍 **GNews - ACTUALITÉS** :\n"
-        for article in news[:3]:
-            context += f"• {article['title']}\n"
-            memory.add(article['title'], "gnews.io")
+    # 5. Actualités
+    if "actualité" in q or "news" in q or "actu" in q:
+        news = get_news(q)
+        if news:
+            context += "\n🌍 **GNews - ACTUALITÉS**\n"
+            for a in news[:3]:
+                context += f"   • {a.get('title', '')[:100]}\n"
+    
+    # 6. Taux de change
+    if "taux" in q or "change" in q or "euro" in q or "dollar" in q:
+        rates = get_exchange_rate()
+        if rates:
+            context += f"\n💱 **EXCHANGE RATE API**\n   1 USD = {rates['eur']:.2f} EUR\n"
     
     return context
 
 def get_ia_response(question):
-    # Récupérer toutes les sources
-    sources_context = get_all_sources(question)
-    
-    # Recherche en mémoire
-    memory_results = memory.search(question, 2)
-    memory_context = ""
-    if memory_results:
-        memory_context = "\n📚 **MÉMOIRE (connaissances antérieures)** :\n"
-        for score, doc in memory_results:
-            memory_context += f"• {doc['content'][:200]}... (source: {doc['source']})\n"
+    data_context = get_all_data(question)
     
     if not GROQ_API_KEY:
-        return sources_context or "KENNYSON OURAGAN prêt. Ajoute ta clé Groq."
-    
-    full_prompt = f"""
-SOURCES COLLECTÉES :
-{sources_context}
-
-{memory_context}
-
-QUESTION : {question}
-
-RÉPONDS en utilisant UNIQUEMENT ces sources. Cite TOUJOURS tes sources.
-"""
+        return data_context or "KENNYSON OURAGAN prêt. Ajoute ta clé Groq dans Render."
     
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
     payload = {
         "model": "llama-3.3-70b-versatile",
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": full_prompt}
+            {"role": "user", "content": f"DONNÉES EXTERNES:\n{data_context}\n\nQUESTION: {question}"}
         ],
         "temperature": 0.7,
-        "max_tokens": 1200
+        "max_tokens": 1000
     }
     
     try:
-        r = requests.post(GROQ_URL, json=payload, headers=headers, timeout=45)
+        r = requests.post(GROQ_URL, json=payload, headers=headers, timeout=40)
         if r.status_code == 200:
             rep = r.json()['choices'][0]['message']['content']
-            return f"{sources_context}\n---\n{rep}" if sources_context else rep
-        return sources_context or "Erreur technique. Veuillez réessayer."
-    except:
-        return sources_context or "KENNYSON OURAGAN prêt. Reformulez votre question."
+            if data_context:
+                return f"{data_context}\n---\n{rep}"
+            return rep
+        return data_context or "Erreur technique. Veuillez réessayer."
+    except Exception as e:
+        return data_context or f"KENNYSON OURAGAN prêt. Question reçue : {question[:100]}..."
 
 # ==================================================
-# ROUTES API
+# ROUTES
 # ==================================================
 @app.route('/api/chat', methods=['POST'])
 def chat():
@@ -339,21 +249,12 @@ def chat():
     reponse = get_ia_response(question)
     return jsonify({"reponse": reponse})
 
-@app.route('/api/sources')
-def list_sources():
-    """Affiche les sources disponibles"""
-    return jsonify({
-        "wikipedia": "API Wikipedia - résumés d'articles",
-        "rss_feeds": RSS_FEEDS,
-        "reddit": "API Reddit - discussions",
-        "worldbank": "API Banque mondiale - PIB, inflation",
-        "gnews": "API GNews - actualités",
-        "coingecko": "API CoinGecko - cryptomonnaies",
-        "openmeteo": "API Open-Meteo - météo"
-    })
+@app.route('/api/health')
+def health():
+    return jsonify({"status": "online", "groq": bool(GROQ_API_KEY), "gnews": bool(GNEWS_API_KEY)})
 
 # ==================================================
-# FRONTEND
+# HTML INTERFACE
 # ==================================================
 HTML = '''
 <!DOCTYPE html>
@@ -361,15 +262,13 @@ HTML = '''
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KENNYSON OURAGAN · IA Multi-Sources</title>
+    <title>KENNYSON OURAGAN · IA Internationale</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto; background: #343541; color: #ececec; height: 100vh; display: flex; flex-direction: column; }
         .header { background: #202123; padding: 16px 20px; border-bottom: 1px solid #4a4b5a; text-align: center; }
-        .logo { font-size: 28px; font-weight: bold; background: linear-gradient(135deg, #e94560, #ff5a7c); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .logo { font-size: 24px; font-weight: bold; background: linear-gradient(135deg, #e94560, #ff5a7c); -webkit-background-clip: text; background-clip: text; color: transparent; }
         .sub { font-size: 11px; color: #8e8ea0; margin-top: 4px; }
-        .sources-bar { background: #2a2b32; padding: 8px 20px; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; border-bottom: 1px solid #4a4b5a; font-size: 10px; }
-        .source-badge { color: #10a37f; }
         .chat-container { flex: 1; overflow-y: auto; padding: 20px; max-width: 900px; margin: 0 auto; width: 100%; }
         .message { display: flex; gap: 16px; margin-bottom: 24px; }
         .avatar { width: 36px; height: 36px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
@@ -393,16 +292,7 @@ HTML = '''
 <body>
 <div class="header">
     <div class="logo">🔥 KENNYSON OURAGAN</div>
-    <div class="sub">IA Multi-Sources · Wikipedia · Médias · Reddit · Banque mondiale · Actualités</div>
-</div>
-<div class="sources-bar">
-    <span>📖 Wikipedia</span> <span class="source-badge">✓</span>
-    <span>📰 Le Monde/Figaro/NYT/BBC</span> <span class="source-badge">✓</span>
-    <span>💬 Reddit</span> <span class="source-badge">✓</span>
-    <span>📊 Banque mondiale</span> <span class="source-badge">✓</span>
-    <span>🌍 GNews</span> <span class="source-badge">✓</span>
-    <span>💰 CoinGecko</span> <span class="source-badge">✓</span>
-    <span>🌤️ Open-Meteo</span> <span class="source-badge">✓</span>
+    <div class="sub">IA Internationale · 7 sources d'information</div>
 </div>
 <div class="chat-container" id="chat"></div>
 <div class="input-area">
@@ -411,14 +301,14 @@ HTML = '''
         <button id="send">Envoyer</button>
     </div>
     <div class="suggestions">
-        <div class="suggestion" data-q="Qui est Elon Musk ?">📖 Biographie Elon Musk</div>
+        <div class="suggestion" data-q="Qui est Albert Einstein ?">📖 Albert Einstein</div>
         <div class="suggestion" data-q="PIB des États-Unis">📊 PIB USA</div>
         <div class="suggestion" data-q="Prix du Bitcoin">💰 Bitcoin</div>
-        <div class="suggestion" data-q="Actualités économiques">🌍 Actualités</div>
         <div class="suggestion" data-q="Météo à Paris">🌤️ Météo Paris</div>
-        <div class="suggestion" data-q="Reddit intelligence artificielle">💬 Reddit IA</div>
+        <div class="suggestion" data-q="Actualités économiques">📰 Actualités</div>
+        <div class="suggestion" data-q="Taux de change USD/EUR">💱 Taux change</div>
     </div>
-    <div class="footer">Sources: Wikipedia · RSS Médias · Reddit · Banque mondiale · GNews · CoinGecko · Open-Meteo</div>
+    <div class="footer">Sources: Wikipedia · Banque mondiale · CoinGecko · Open-Meteo · GNews · Exchange Rate API</div>
 </div>
 
 <script>
@@ -454,7 +344,7 @@ document.getElementById('send').onclick = send;
 input.onkeypress = (e) => { if(e.key === 'Enter') { e.preventDefault(); send(); } };
 document.querySelectorAll('.suggestion').forEach(s => { s.onclick = () => { input.value = s.dataset.q; send(); }; });
 
-addMessage('🌍 **KENNYSON OURAGAN - IA Multi-Sources**\n\nBonjour ! Je suis votre assistant avec accès aux MÊMES SOURCES que ChatGPT.\n\n**📚 Mes sources d\'information :**\n• 📖 Wikipedia (savoir général)\n• 📰 RSS des grands médias (Le Monde, Figaro, NYT, BBC)\n• 💬 Reddit (discussions et opinions)\n• 📊 Banque mondiale (PIB, inflation)\n• 🌍 GNews (actualités temps réel)\n• 💰 CoinGecko (cryptomonnaies)\n• 🌤️ Open-Meteo (météo mondiale)\n\n**Exemples de questions :**\n• "Qui est Albert Einstein ?" (Wikipedia)\n• "PIB de la France" (Banque mondiale)\n• "Dernières actualités économiques" (GNews)\n• "Reddit intelligence artificielle" (Reddit)\n• "Météo à Londres" (Open-Meteo)\n\n**Chaque réponse CITERA SES SOURCES.**\n\nPosez votre question ! 🔥', 'bot');
+addMessage('🌍 **KENNYSON OURAGAN - IA Internationale**\n\nBonjour ! Je suis votre assistant avec **6 sources d\'information** :\n\n📖 **Wikipedia** (biographies, définitions)\n📊 **Banque mondiale** (PIB, inflation)\n💰 **CoinGecko** (Bitcoin, crypto)\n🌤️ **Open-Meteo** (météo mondiale)\n📰 **GNews** (actualités)\n💱 **Exchange Rate API** (taux de change)\n\n**Exemples :**\n• "Qui est Elon Musk ?"\n• "PIB de la France"\n• "Prix du Bitcoin"\n• "Météo à Londres"\n• "Actualités économiques"\n• "Taux de change USD/EUR"\n\nPosez votre question ! 🔥', 'bot');
 </script>
 </body>
 </html>
