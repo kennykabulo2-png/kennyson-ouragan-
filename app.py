@@ -1,247 +1,75 @@
 from flask import Flask, jsonify, request
 import requests
 import os
-import json
 import re
-from datetime import datetime
 
 app = Flask(__name__)
 
 # ==================================================
-# CONFIGURATION
+# CONFIGURATION API
 # ==================================================
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # ==================================================
-# BASE DE CONNAISSANCES TÉLÉCOM
+# BASE DE CONNAISSANCES
 # ==================================================
-KNOWLEDGE_BASE = {
-    "latence": {
-        "def": "Temps de transmission entre deux points (ms)",
-        "normal": "< 50ms",
-        "causes": ["Congestion réseau", "Distance", "Interférences", "Mauvaise configuration"],
-        "solutions": ["QoS", "Fibre optique", "Optimisation routage", "Passer en filaire"]
-    },
-    "bande_passante": {
-        "def": "Capacité de transmission (bits/s)",
-        "normal": "> 100 Mbps",
-        "causes": ["Saturation", "Matériel obsolète", "Interférences"],
-        "solutions": ["Augmenter débit", "Optimiser trafic", "Fibre optique"]
-    },
-    "ipv6": {
-        "def": "Protocole Internet version 6",
-        "avantages": ["Adresses illimitées", "Sécurité intégrée", "Meilleure performance"],
-        "format": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
-    },
-    "5g": {
-        "def": "Cinquième génération réseau mobile",
-        "debit": "Jusqu'à 10 Gbps",
-        "latence": "< 1 ms",
-        "applications": ["IoT", "Véhicules autonomes", "Smart Cities"]
-    },
-    "firewall": {
-        "def": "Système de sécurité réseau",
-        "types": ["Matériel", "Logiciel", "Applicatif"],
-        "recommandations": ["Configurer règles", "Mettre à jour", "Journaliser"]
-    },
-    "vpn": {
-        "def": "Réseau privé virtuel",
-        "protocoles": ["OpenVPN", "IPsec", "WireGuard"],
-        "avantages": ["Confidentialité", "Sécurité"]
-    },
-    "wifi": {
-        "def": "Technologie sans fil",
-        "normes": ["802.11n", "802.11ac", "802.11ax (Wi-Fi 6)"],
-        "problemes": ["Interférences", "Portée limitée", "Saturation canal"],
-        "solutions": ["Changer canal", "5 GHz", "Répéteurs"]
-    },
-    "cybersecurite": {
-        "def": "Protection des systèmes",
-        "menaces": ["Malware", "Phishing", "DDoS", "Ransomware"],
-        "bonnes_pratiques": ["Mots de passe forts", "MFA", "Mises à jour", "Sauvegardes"]
-    },
-    "cloud": {
-        "def": "Services informatiques à distance",
-        "modeles": ["IaaS", "PaaS", "SaaS"],
-        "fournisseurs": ["AWS", "Azure", "Google Cloud", "OVH"]
-    }
+KNOWLEDGE = {
+    "latence": {"def": "Temps de transmission", "solutions": ["QoS", "Fibre optique"]},
+    "wifi": {"def": "Technologie sans fil", "solutions": ["Changer canal", "5 GHz"]},
+    "5g": {"def": "Réseau mobile 5G", "debit": "Jusqu'à 10 Gbps"},
+    "vpn": {"def": "Réseau privé virtuel", "protocoles": ["OpenVPN", "WireGuard"]}
 }
 
-# ==================================================
-# OUTILS RÉSEAU
-# ==================================================
-class NetworkTools:
-    @staticmethod
-    def diagnose_latency(ms):
-        if ms < 50:
-            return "✅ Excellente"
-        elif ms < 100:
-            return "⚠️ Modérée"
-        else:
-            return "❌ Élevée"
+def get_context(question):
+    q = question.lower()
+    context = ""
     
-    @staticmethod
-    def diagnose_wifi(signal):
-        if signal >= 70:
-            return "✅ Excellent"
-        elif signal >= 50:
-            return "⚠️ Moyen"
-        else:
-            return "❌ Faible"
-
-# ==================================================
-# AGENT TÉLÉCOM
-# ==================================================
-class TelecomAgent:
-    def __init__(self):
-        self.knowledge = KNOWLEDGE_BASE
-        self.tools = NetworkTools()
-    
-    def identify_topics(self, question):
-        q = question.lower()
-        topics = []
-        topic_map = {
-            "latence": ["latence", "ping", "lent", "ralenti", "temps réponse", "ms"],
-            "bande_passante": ["bande passante", "débit", "vitesse", "mbps"],
-            "ipv6": ["ipv6", "adresse ipv6"],
-            "5g": ["5g", "réseau mobile"],
-            "firewall": ["firewall", "pare-feu", "bloque"],
-            "vpn": ["vpn", "réseau privé"],
-            "wifi": ["wifi", "sans fil", "wireless"],
-            "cybersecurite": ["sécurité", "virus", "hack", "malware", "ransomware"],
-            "cloud": ["cloud", "nuage", "aws", "azure"]
-        }
-        for topic, keywords in topic_map.items():
-            if any(kw in q for kw in keywords):
-                topics.append(topic)
-        return topics
-    
-    def get_knowledge(self, topics):
-        context = ""
-        for topic in topics:
-            if topic in self.knowledge:
-                data = self.knowledge[topic]
-                context += f"📡 **{topic.upper()}** : {data.get('def', '')}\n"
-                if 'causes' in data:
-                    context += f"   Causes: {', '.join(data['causes'][:3])}\n"
-                if 'solutions' in data:
-                    context += f"   Solutions: {', '.join(data['solutions'][:3])}\n"
-                context += "\n"
-        return context
-    
-    def analyze_network(self, question):
-        q = question.lower()
-        analysis = ""
-        
-        # Détection de latence
+    if "latence" in q or "ms" in q:
         ms_match = re.search(r'(\d+)\s*ms', q)
         if ms_match:
             ms = int(ms_match.group(1))
-            status = self.tools.diagnose_latency(ms)
-            analysis += f"📊 **Latence :** {ms} ms - {status}\n\n"
-        
-        # Détection de débit
-        mbps_match = re.search(r'(\d+)\s*(?:mbps|mb/s)', q)
-        if mbps_match:
-            mbps = int(mbps_match.group(1))
-            if mbps >= 100:
-                status = "✅ Excellent"
-            elif mbps >= 50:
-                status = "⚠️ Moyen"
-            else:
-                status = "❌ Faible"
-            analysis += f"📊 **Débit :** {mbps} Mbps - {status}\n\n"
-        
-        # Détection de signal Wi-Fi
-        signal_match = re.search(r'(\d+)\s*%', q)
-        if signal_match and 'wifi' in q:
-            signal = int(signal_match.group(1))
-            status = self.tools.diagnose_wifi(signal)
-            analysis += f"📊 **Signal Wi-Fi :** {signal}% - {status}\n\n"
-        
-        return analysis
+            status = "excellente" if ms < 50 else "modérée" if ms < 100 else "élevée"
+            context += f"Latence: {ms} ms ({status})\n"
     
-    def process(self, question):
-        topics = self.identify_topics(question)
-        knowledge = self.get_knowledge(topics)
-        analysis = self.analyze_network(question)
-        
-        if not topics and not analysis:
-            return self.get_general_response(question)
-        
-        if not GROQ_API_KEY:
-            return f"{knowledge}{analysis}\n\n💡 Solutions recommandées:\n• Vérifiez la configuration réseau\n• Consultez la documentation technique\n• Contactez le support si nécessaire"
-        
-        headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-        payload = {
-            "model": "llama-3.3-70b-versatile",
-            "messages": [
-                {"role": "system", "content": "Tu es un expert en télécommunications. Réponds en français de manière structurée."},
-                {"role": "user", "content": f"Contexte:\n{knowledge}{analysis}\n\nQuestion: {question}\n\nDonne un diagnostic et des solutions concrètes."}
-            ],
-            "temperature": 0.7,
-            "max_tokens": 600
-        }
-        
-        try:
-            r = requests.post(GROQ_URL, json=payload, headers=headers, timeout=30)
-            if r.status_code == 200:
-                reponse = r.json()['choices'][0]['message']['content']
-                return f"{knowledge}{analysis}\n\n{reponse}"
-            return f"{knowledge}{analysis}\n\n💡 Solutions recommandées: Vérifiez la configuration réseau."
-        except:
-            return f"{knowledge}{analysis}\n\n💡 Solutions recommandées: Vérifiez la configuration réseau."
+    if "wifi" in q:
+        context += "Sujet: Wi-Fi - Problème identifié\n"
     
-    def get_general_response(self, question):
-        if not GROQ_API_KEY:
-            return self.get_help_message()
-        
-        headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-        payload = {
-            "model": "llama-3.3-70b-versatile",
-            "messages": [{"role": "system", "content": "Tu es un expert en télécommunications. Réponds en français."}, {"role": "user", "content": question}],
-            "temperature": 0.7,
-            "max_tokens": 400
-        }
-        try:
-            r = requests.post(GROQ_URL, json=payload, headers=headers, timeout=30)
-            if r.status_code == 200:
-                return r.json()['choices'][0]['message']['content']
-            return self.get_help_message()
-        except:
-            return self.get_help_message()
+    return context
+
+def get_ia_response(question):
+    context = get_context(question)
     
-    def get_help_message(self):
-        return """📡 **Agent Télécom & Informatique**
-
-Je suis spécialisé en télécommunications et informatique.
-
-**🔍 Ce que je peux faire :**
-• Diagnostiquer des problèmes réseau
-• Analyser la latence, le débit, le signal Wi-Fi
-• Recommander des solutions techniques
-• Expliquer les concepts (IPv4, IPv6, DNS, VPN, 5G, IoT, Cloud, Cybersécurité)
-
-**💡 Exemples de questions :**
-• "J'ai 200 ms de latence, c'est grave ?"
-• "Comment améliorer mon Wi-Fi ?"
-• "Qu'est-ce que le 5G ?"
-• "Comment sécuriser mon réseau ?"
-• "C'est quoi un VPN ?"
-
-**Posez votre question technique !**"""
+    if not GROQ_API_KEY:
+        return "⚠️ **GROQ_API_KEY manquante**\n\nAjoute ta clé Groq dans les variables d'environnement Render."
+    
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    payload = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [
+            {"role": "system", "content": "Tu es KENNYSON OURAGAN, un expert en télécommunications. Réponds en français de manière structurée avec diagnostic et solutions."},
+            {"role": "user", "content": f"Contexte: {context}\n\nQuestion: {question}"}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 500
+    }
+    
+    try:
+        r = requests.post(GROQ_URL, json=payload, headers=headers, timeout=30)
+        if r.status_code == 200:
+            return r.json()['choices'][0]['message']['content']
+        return f"⚠️ Erreur API: {r.status_code}"
+    except Exception as e:
+        return f"⚠️ Erreur: {str(e)[:100]}"
 
 # ==================================================
-# ROUTES API
+# ROUTES
 # ==================================================
-agent = TelecomAgent()
-
 @app.route('/api/chat', methods=['POST'])
 def chat():
     data = request.json
     question = data.get('question', '')
-    reponse = agent.process(question)
+    reponse = get_ia_response(question)
     return jsonify({"reponse": reponse})
 
 @app.route('/api/health')
@@ -249,7 +77,7 @@ def health():
     return jsonify({"status": "online", "groq": bool(GROQ_API_KEY)})
 
 # ==================================================
-# FRONTEND
+# HTML
 # ==================================================
 HTML = '''
 <!DOCTYPE html>
@@ -287,7 +115,7 @@ HTML = '''
 <body>
 <div class="header">
     <div class="logo">📡 KENNYSON OURAGAN <span class="badge">AGENT TÉLÉCOM</span></div>
-    <div class="sub">Réseaux · Sécurité · 5G · IoT · Cloud · Informatique</div>
+    <div class="sub">Réseaux · Sécurité · 5G · IoT · Cloud</div>
 </div>
 <div class="chat-container" id="chat"></div>
 <div class="input-area">
@@ -300,10 +128,9 @@ HTML = '''
         <div class="suggestion" data-q="Comment améliorer mon Wi-Fi ?">📶 Wi-Fi</div>
         <div class="suggestion" data-q="Qu'est-ce que le 5G ?">📡 5G</div>
         <div class="suggestion" data-q="Comment sécuriser mon réseau ?">🔒 Sécurité</div>
-        <div class="suggestion" data-q="Que signifie IPv6 ?">🌐 IPv6</div>
         <div class="suggestion" data-q="C'est quoi un VPN ?">🔐 VPN</div>
     </div>
-    <div class="footer">📡 Expert en télécommunications et informatique · Diagnostic réseau · Solutions techniques</div>
+    <div class="footer">📡 Expert en télécommunications · API Groq · Solutions IA</div>
 </div>
 
 <script>
@@ -331,7 +158,7 @@ async function send() {
         addMessage(data.reponse, 'bot');
     } catch(e) {
         chat.lastChild.remove();
-        addMessage("❌ Erreur. Veuillez réessayer.", 'bot');
+        addMessage("❌ Erreur. Vérifie que GROQ_API_KEY est configurée.", 'bot');
     }
 }
 
@@ -339,7 +166,7 @@ document.getElementById('send').onclick = send;
 input.onkeypress = (e) => { if(e.key === 'Enter') { e.preventDefault(); send(); } };
 document.querySelectorAll('.suggestion').forEach(s => { s.onclick = () => { input.value = s.dataset.q; send(); }; });
 
-addMessage('📡 **KENNYSON OURAGAN - AGENT TÉLÉCOM**\n\nBonjour ! Je suis votre expert en télécommunications et informatique.\n\n**🔍 Mes compétences :**\n• 📊 Analyse de réseau (latence, débit, signal)\n• 🔒 Cybersécurité (pare-feu, VPN, protection)\n• 📶 Technologies (5G, Wi-Fi, IoT)\n• 🌐 Protocoles (IPv4, IPv6, DNS, TCP/IP)\n• ☁️ Cloud Computing (IaaS, PaaS, SaaS)\n\n**💡 Exemples :**\n• "J\'ai 150 ms de latence, c\'est normal ?"\n• "Comment configurer un VPN ?"\n• "Quelle est la différence entre IPv4 et IPv6 ?"\n• "Comment sécuriser mon réseau Wi-Fi ?"\n\nJe vous donne des diagnostics précis et des solutions concrètes ! 🔥', 'bot');
+addMessage('📡 **KENNYSON OURAGAN - AGENT TÉLÉCOM (API Groq)**\n\nBonjour ! Je suis votre expert en télécommunications, propulsé par **Groq Llama 3.3 70B**.\n\n**🔍 Ce que je peux faire :**\n• 📊 Analyser la latence réseau\n• 📶 Diagnostiquer les problèmes Wi-Fi\n• 📡 Expliquer le 5G, VPN, Sécurité\n• 🔒 Conseiller en cybersécurité\n\n**💡 Exemples :**\n• "J\'ai 150 ms de latence, c\'est normal ?"\n• "Comment améliorer mon Wi-Fi ?"\n• "Qu\'est-ce que le 5G ?"\n• "C\'est quoi un VPN ?"\n\n**Posez votre question technique !** 🔥', 'bot');
 </script>
 </body>
 </html>
